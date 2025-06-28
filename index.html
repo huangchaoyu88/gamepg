@@ -6,44 +6,37 @@
     <title>遊戲選單</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Noto Sans TC', sans-serif;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            background: #f4f4f4;
+            min-height: 100vh;
+            background: #f0f0f0;
         }
-        .container {
-            text-align: center;
-        }
-        .game-list {
-            list-style: none;
-            padding: 0;
-        }
-        .game-list li {
-            margin: 1rem 0;
+        h1 {
+            margin-bottom: 1rem;
         }
         .game-link {
-            display: inline-block;
-            padding: 1rem 2rem;
-            background: #4CAF50;
-            color: white;
-            text-decoration: none;
+            margin: 0.5rem;
+            padding: 1.5rem 2rem;
+            background: #fff;
             border-radius: 8px;
-            transition: background 0.3s;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+            font-size: 1.25rem;
+            user-select: none;
         }
         .game-link:hover {
-            background: #45a049;
+            background: #e6e6e6;
+            transform: scale(1.05);
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>遊戲選單</h1>
-        <ul class="game-list">
-            <li><a href="balloon.html" class="game-link">九九乘法射氣球</a></li>
-            <li><a href="GG.html" class="game-link">幾何方塊探險家</a></li>
-        </ul>
-    </div>
+    <h1>遊戲選單</h1>
+    <div class="game-link" onclick="location.href='shoot.html'">九九乘法射氣球</div>
+    <div class="game-link" onclick="location.href='GG.html'">幾何方塊探險家</div>
 </body>
 </html>
