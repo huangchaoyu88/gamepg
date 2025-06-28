@@ -25,16 +25,23 @@
             transition: transform 0.2s, background 0.2s;
             font-size: 1.25rem;
             user-select: none;
+            display: inline-block;
+            text-decoration: none;
+            color: inherit;
         }
         .game-link:hover {
             background: #e6e6e6;
             transform: scale(1.05);
         }
+        .game-link:focus {
+            outline: 2px solid #000;
+            outline-offset: 2px;
+        }
     </style>
 </head>
 <body>
     <h1>遊戲選單</h1>
-    <div class="game-link" onclick="location.href='shoot.html'">九九乘法射氣球</div>
-    <div class="game-link" onclick="location.href='GG.html'">幾何方塊探險家</div>
+    <a class="game-link" href="shoot.html">九九乘法射氣球</a>
+    <a class="game-link" href="GG.html">幾何方塊探險家</a>
 </body>
 </html>
