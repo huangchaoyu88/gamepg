@@ -1,357 +1,40 @@
-<!-- *** 修正開始: 這是可安全嵌入的版本 *** -->
-
-<!-- 1. 遊戲所需的樣式，已完全隔離，不會影響您的部落格 -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;700&display=swap" rel="stylesheet">
-<style>
-    #game-container * {
-        /* 重置一些基本樣式，避免被佈景主題覆寫 */
-        box-sizing: border-box;
-        font-family: 'Noto Sans TC', sans-serif;
-        margin: 0;
-        padding: 0;
-    }
-    #game-container {
-        width: 100%;
-        max-width: 896px; 
-        aspect-ratio: 9 / 16;
-        position: relative;
-        overflow: hidden;
-        border-radius: 1rem; /* rounded-2xl */
-        box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25); /* shadow-2xl */
-        background-color: white;
-        margin: 2rem auto;
-        touch-action: none;
-    }
-    @media (min-width: 768px) { /* md: 斷點 */
-        #game-container {
-            aspect-ratio: 16 / 9;
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>遊戲選單</title>
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #f0f0f0;
         }
-    }
-    #game-container .overlay {
-        position: absolute;
-        top: 0; left: 0; right: 0; bottom: 0;
-        background-color: rgba(0, 0, 0, 0.7);
-        z-index: 20;
-        display: none; /* 預設隱藏 */
-        justify-content: center;
-        align-items: center;
-    }
-    #game-container .overlay-content-wrapper {
-        width: 90%;
-        color: white;
-        text-align: center;
-    }
-    #game-container canvas {
-        background: linear-gradient(to bottom, #87CEEB 0%, #B2FFFF 100%);
-        cursor: crosshair;
-        display: block;
-        width: 100%;
-        height: 100%;
-    }
-    #game-container .game-button {
-        padding: 0.75rem 2rem;
-        font-size: 1.25rem;
-        font-weight: bold;
-        color: white;
-        background: linear-gradient(145deg, #FF6B6B, #FFD166);
-        border: none;
-        border-radius: 0.75rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-        cursor: pointer;
-        transition: all 0.2s ease-in-out;
-    }
-    #game-container .game-button:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 10px rgba(0, 0, 0, 0.3);
-    }
-    #game-container .heart {
-        color: #FF4136;
-        font-size: 1.5rem; /* 在窄螢幕上稍微小一點的愛心 */
-        display: inline-block;
-        animation: heartbeat 1.5s infinite;
-    }
-    @media (min-width: 640px) {
-        #game-container .heart {
-            font-size: 2rem;
+        h1 { margin-bottom: 1rem; }
+        .game-link {
+            margin: 0.5rem;
+            padding: 1.5rem 2rem;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+            cursor: pointer;
+            transition: transform 0.2s, background 0.2s;
+            font-size: 1.25rem;
+            user-select: none;
         }
-    }
-    @keyframes heartbeat {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.1); }
-    }
-    /* 介面 UI 樣式 (*** 修正部分 ***) */
-    #game-container #game-ui {
-        position: absolute;
-        top: 0; left: 0;
-        width: 100%;
-        padding: 0.5rem; /* 在最小螢幕上使用較小的內距 */
-        z-index: 10;
-    }
-     @media (min-width: 640px) {
-        #game-container #game-ui {
-            padding: 1rem;
+        .game-link:hover {
+            background: #e6e6e6;
+            transform: scale(1.05);
         }
-    }
-    #game-container #game-ui > div {
-        display: flex;
-        justify-content: space-between; /* 將題目和分數推到兩側 */
-        align-items: center;
-        background-color: rgba(255, 255, 255, 0.5);
-        backdrop-filter: blur(4px);
-        padding: 0.5rem 1rem;
-        border-radius: 0.75rem;
-        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-    }
-    #game-container #question-text {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: #1f2937;
-        white-space: nowrap;
-    }
-     @media (min-width: 640px) {
-        #game-container #question-text {
-            font-size: 1.875rem;
-        }
-    }
-    #game-container .stats-block {
-        display: flex;
-        align-items: center;
-        gap: 0.75rem; /* space-x-3 */
-        font-size: 1.125rem; /* text-lg */
-        font-weight: 700;
-    }
-    @media (min-width: 640px) {
-        #game-container .stats-block {
-            gap: 1rem; /* space-x-4 */
-            font-size: 1.25rem; /* text-xl */
-        }
-    }
-    #game-container .stats-block .text-yellow-600 { color: #ca8a04; }
-    #game-container .stats-block #lives { 
-        color: #ef4444; 
-        display: flex;
-        align-items: center;
-        gap: 0.25rem;
-    }
-
-    /* 開始/結束畫面文字樣式 */
-    #game-container #start-screen h1, #game-over-screen h1 { font-size: 2.25rem; font-weight: 700; margin-bottom: 1rem;}
-    #game-container #start-screen p, #game-over-screen p { font-size: 1.125rem; margin-bottom: 2rem;}
-    #game-container #final-score { font-size: 3rem; font-weight: 700; margin-bottom: 2rem; color: #facc15; }
-     @media (min-width: 768px) {
-        #game-container #start-screen h1, #game-over-screen h1 { font-size: 3.75rem; }
-        #game-container #start-screen p, #game-over-screen p { font-size: 1.25rem; }
-        #game-container #final-score { font-size: 4.5rem; }
-    }
-</style>
-
-<!-- 2. 遊戲的 HTML 結構 (*** 修正部分 ***) -->
-<div id="game-container">
-    <div id="game-ui">
-        <div>
-            <h2 id="question-text">7 x 8 = ?</h2>
-            <div class="stats-block">
-                <div class="text-yellow-600">⭐ <span id="score">0</span></div>
-                <div id="lives"></div>
-            </div>
-        </div>
-    </div>
-    <canvas id="game-canvas"></canvas>
-    
-    <div id="start-screen" class="overlay" style="display: flex;">
-        <div class="overlay-content-wrapper">
-            <h1>九九乘法射氣球</h1>
-            <p>點擊正確答案的氣球！</p>
-            <button id="start-button" class="game-button">開始遊戲</button>
-        </div>
-    </div>
-    
-    <div id="game-over-screen" class="overlay">
-        <div class="overlay-content-wrapper">
-            <h1>遊戲結束</h1>
-            <p>你的分數是:</p>
-            <p id="final-score">0</p>
-            <button id="restart-button" class="game-button">再玩一次</button>
-        </div>
-    </div>
-</div>
-
-<!-- 3. 遊戲的 JavaScript 腳本 -->
-<script type="text/javascript">
-//<![CDATA[
-    function initializeBalloonGame() {
-        const gameContainer = document.getElementById('game-container');
-        if (!gameContainer) { return; }
-
-        const canvas = document.getElementById('game-canvas');
-        const ctx = canvas.getContext('2d');
-        const questionText = document.getElementById('question-text');
-        const scoreDisplay = document.getElementById('score');
-        const livesDisplay = document.getElementById('lives');
-        const startScreen = document.getElementById('start-screen');
-        const gameOverScreen = document.getElementById('game-over-screen');
-        const finalScoreDisplay = document.getElementById('final-score');
-        const startButton = document.getElementById('start-button');
-        const restartButton = document.getElementById('restart-button');
-
-        let score = 0;
-        let lives = 3;
-        let balloons = [];
-        let correctAnswer = 0;
-        let gameIsActive = false;
-        let animationFrameId;
-
-        const balloonRadius = 40;
-        const balloonColors = ['#FF6B6B', '#FFD166', '#4ECDC4', '#54A0FF', '#9D6CFF'];
-
-        class Balloon {
-            constructor(x, y, speed, color, number) {
-                this.x = x; this.y = y; this.radius = balloonRadius;
-                this.speed = speed; this.color = color; this.number = number;
-                this.isPopped = false;
-            }
-            draw() {
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = this.color; ctx.fill();
-                ctx.closePath();
-                ctx.beginPath();
-                ctx.moveTo(this.x - this.radius / 4, this.y + this.radius);
-                ctx.lineTo(this.x + this.radius / 4, this.y + this.radius);
-                ctx.lineTo(this.x, this.y + this.radius + 10);
-                ctx.closePath();
-                ctx.fillStyle = this.color; ctx.fill();
-                ctx.fillStyle = 'white';
-                ctx.font = `bold ${this.radius * 0.7}px 'Noto Sans TC'`;
-                ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-                ctx.fillText(this.number, this.x, this.y);
-            }
-            update() { this.y -= this.speed; }
-        }
-        
-        function resizeCanvas() {
-            canvas.width = gameContainer.clientWidth;
-            canvas.height = gameContainer.clientHeight;
-        }
-
-        function startGame() {
-            score = 0; lives = 3; gameIsActive = true; balloons = [];
-            updateScoreAndLives();
-            generateNewQuestion();
-            startScreen.style.display = 'none';
-            gameOverScreen.style.display = 'none';
-            if(animationFrameId) cancelAnimationFrame(animationFrameId);
-            gameLoop();
-        }
-
-        function endGame() {
-            gameIsActive = false;
-            cancelAnimationFrame(animationFrameId); // Stop the loop
-            finalScoreDisplay.textContent = score;
-            gameOverScreen.style.display = 'flex';
-        }
-
-        function updateScoreAndLives() {
-            scoreDisplay.textContent = score;
-            livesDisplay.innerHTML = '';
-            for (let i = 0; i < lives; i++) {
-                const heart = document.createElement('span');
-                heart.className = 'heart';
-                heart.innerHTML = '❤️'; 
-                livesDisplay.appendChild(heart);
-            }
-        }
-        
-        function generateNewQuestion() {
-            const num1 = Math.floor(Math.random() * 9) + 1;
-            const num2 = Math.floor(Math.random() * 9) + 1;
-            correctAnswer = num1 * num2;
-            questionText.textContent = `${num1} x ${num2} = ?`;
-            const answers = new Set([correctAnswer]);
-            while (answers.size < 4) {
-                const wrongAnswer = Math.max(1, correctAnswer + Math.floor(Math.random() * 11) - 5);
-                if (wrongAnswer !== correctAnswer) answers.add(wrongAnswer);
-            }
-            spawnBalloons(Array.from(answers).sort(() => Math.random() - 0.5));
-        }
-
-        function spawnBalloons(answers) {
-            balloons = [];
-            const positions = [0.2, 0.4, 0.6, 0.8].sort(() => Math.random() - 0.5);
-            answers.forEach((answer, index) => {
-                const x = canvas.width * positions[index];
-                const y = canvas.height + balloonRadius + Math.random() * 100;
-                const speed = 1 + Math.random() * 1.5 + (score * 0.05);
-                const color = balloonColors[Math.floor(Math.random() * balloonColors.length)];
-                balloons.push(new Balloon(x, y, speed, color, answer));
-            });
-        }
-        
-        function handleInteraction(event) {
-            if (!gameIsActive) return;
-            const rect = canvas.getBoundingClientRect();
-            const clientX = event.clientX || event.touches[0].clientX;
-            const clientY = event.clientY || event.touches[0].clientY;
-            const x = clientX - rect.left;
-            const y = clientY - rect.top;
-            let correctShot = false;
-            for (let i = balloons.length - 1; i >= 0; i--) {
-                const balloon = balloons[i];
-                const distance = Math.sqrt((x - balloon.x)**2 + (y - balloon.y)**2);
-                if (distance < balloon.radius) {
-                    if (balloon.number === correctAnswer) {
-                        score += 10; correctShot = true; balloon.isPopped = true;
-                    } else {
-                        lives--;
-                        updateScoreAndLives();
-                        if (lives <= 0) { endGame(); return; }
-                    }
-                    break;
-                }
-            }
-            if(correctShot) { balloons = []; generateNewQuestion(); }
-        }
-        
-        function gameLoop() {
-            if (!gameIsActive) return;
-            animationFrameId = requestAnimationFrame(gameLoop);
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            balloons.forEach(balloon => {
-                if(balloon.isPopped) return;
-                balloon.update(); balloon.draw();
-            });
-            balloons = balloons.filter(b => b.y + b.radius > 0 && !b.isPopped);
-            if (balloons.length === 0 && gameIsActive) {
-                lives--;
-                updateScoreAndLives();
-                if (lives > 0) {
-                     generateNewQuestion();
-                } else {
-                     endGame();
-                }
-            }
-        }
-
-        window.addEventListener('resize', resizeCanvas);
-        startButton.addEventListener('click', startGame);
-        restartButton.addEventListener('click', startGame);
-        canvas.addEventListener('mousedown', handleInteraction);
-        canvas.addEventListener('touchstart', (e) => {
-             e.preventDefault(); handleInteraction(e);
-        });
-
-        resizeCanvas();
-        updateScoreAndLives();
-    }
-
-    if (document.readyState === 'complete' || (document.readyState !== 'loading' && !document.documentElement.doScroll)) {
-        initializeBalloonGame();
-    } else {
-        document.addEventListener('DOMContentLoaded', initializeBalloonGame);
-    }
-//]]>
-</script>
-
-<!-- *** 修正結束 *** -->
+    </style>
+</head>
+<body>
+    <h1>遊戲選單</h1>
+    <div class="game-link" onclick="location.href='shoot.html'">九九乘法射氣球</div>
+    <div class="game-link" onclick="location.href='GG.html'">幾何方塊探險家</div>
+</body>
+</html>
