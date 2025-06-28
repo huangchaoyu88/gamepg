@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幾何方塊探險家</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            touch-action: none; /* 防止在觸控設備上進行縮放等頁面操作 */
+        }
+        #game-board {
+            background-image:
+                linear-gradient(rgba(135, 206, 235, 0.6) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(135, 206, 235, 0.6) 1px, transparent 1px);
+            background-size: 40px 40px;
+            background-color: #f0f9ff; /* 淺天空藍 */
+            border: 2px solid #38bdf8; /* 天空藍-500 */
+        }
+        .block {
+            display: grid;
+            cursor: grab;
+            position: relative;
+        }
+        .block-cell {
+            width: 20px;
+            height: 20px;
+            border: 1px solid rgba(0,0,0,0.2);
+        }
+        /* 放在遊戲板上的方塊樣式 */
+        .placed-block-cell {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(0,0,0,0.3);
+            transition: all 0.2s ease;
+        }
+        /* 拖曳時的虛影元素樣式 */
+        .ghost {
+            position: absolute;
+            pointer-events: none;
+            z-index: 100;
+            opacity: 0.7;
+            transform-origin: top left;
+        }
+        .feedback-correct {
+            animation: feedback-pop 0.5s ease-out;
+            color: #16a34a; /* 綠色-600 */
+        }
+        .feedback-wrong {
+            animation: feedback-shake 0.5s ease-in-out;
+            color: #dc2626; /* 紅色-600 */
+        }
+        @keyframes feedback-pop {
+            0% { transform: scale(0.8); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        @keyframes feedback-shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="w-full max-w-4xl mx-auto bg-white rounded-2xl shadow-lg p-4 sm:p-6">
+        <header class="text-center mb-4">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-800">幾何方塊探險家</h1>
+            <p id="level-title" class="text-base sm:text-lg text-sky-600 font-medium mt-1">關卡 1: 熱身一下</p>
+        </header>
+
+        <div class="bg-amber-100 border-l-4 border-amber-500 text-amber-800 p-4 rounded-md mb-4">
+            <h2 class="font-bold">任務目標：</h2>
+            <p id="mission-text">請用下方的方塊，拼出一個面積 (Area) 為 4 的圖形。</p>
+        </div>
+
+        <div class="flex flex-col md:flex-row gap-4">
+            <!-- 遊戲主畫布 -->
+            <div id="game-board" class="w-full h-80 md:h-auto md:flex-1 rounded-lg relative">
+                 <!-- 放置好的方塊將會由 JS 添加到這裡 -->
+            </div>
+
+            <!-- 控制與方塊區 -->
+            <div class="w-full md:w-64 flex flex-col gap-4">
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner">
+                    <h3 class="font-bold text-lg mb-2 text-center">可用方塊</h3>
+                    <div id="block-pool" class="flex flex-wrap justify-center gap-4">
+                        <!-- 方塊將會由 JS 添加到這裡 -->
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 p-4 rounded-lg shadow-inner text-center">
+                    <h3 class="font-bold text-lg mb-2">目前數值</h3>
+                    <p class="text-lg">面積: <span id="current-area" class="font-bold">0</span></p>
+                    <p class="text-lg">周長: <span id="current-perimeter" class="font-bold">0</span></p>
+                </div>
+
+                <div id="feedback-container" class="h-8 text-center text-xl font-bold"></div>
+
+                <button id="check-btn" class="w-full bg-sky-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-sky-600 transition-colors text-xl">檢查答案</button>
+                <button id="reset-btn" class="w-full bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600 transition-colors">重置關卡</button>
+                <button id="next-level-btn" class="w-full bg-green-500 text-white font-bold py-3 px-4 rounded-lg hover:bg-green-600 transition-colors text-xl hidden">前往下一關</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // --- DOM 元素 ---
+    const gameBoard = document.getElementById('game-board');
+    const blockPool = document.getElementById('block-pool');
+    const missionText = document.getElementById('mission-text');
+    const levelTitle = document.getElementById('level-title');
+    const checkBtn = document.getElementById('check-btn');
+    const resetBtn = document.getElementById('reset-btn');
+    const nextLevelBtn = document.getElementById('next-level-btn');
+    const currentAreaText = document.getElementById('current-area');
+    const currentPerimeterText = document.getElementById('current-perimeter');
+    const feedbackContainer = document.getElementById('feedback-container');
+
+    // --- 遊戲設定 ---
+    const CELL_SIZE = 40; // 網格大小 (像素)
+    let BOARD_COLS = Math.floor(gameBoard.clientWidth / CELL_SIZE);
+    let BOARD_ROWS = Math.floor(gameBoard.clientHeight / CELL_SIZE);
+
+    const BLOCKS = {
+        'I': { shape: [[0,0], [0,1], [0,2], [0,3]], color: 'bg-cyan-400' },
+        'O': { shape: [[0,0], [0,1], [1,0], [1,1]], color: 'bg-yellow-400' },
+        'T': { shape: [[0,1], [1,0], [1,1], [1,2]], color: 'bg-purple-400' },
+        'L': { shape: [[0,0], [1,0], [2,0], [2,1]], color: 'bg-orange-400' },
+        'S': { shape: [[0,1], [0,2], [1,0], [1,1]], color: 'bg-green-400' },
+    };
+
+    const LEVELS = [
+        {
+            title: "關卡 1: 熱身一下",
+            mission: "請用下方的方塊，拼出一個 **面積 (Area)** 為 **4** 的圖形。",
+            goal: { type: 'area', value: 4 },
+            blocks: ['O']
+        },
+        {
+            title: "關卡 2: 建造圍牆",
+            mission: "請拼出一個 **周長 (Perimeter)** 為 **10** 的長方形。",
+            goal: { type: 'perimeter', value: 10 },
+            blocks: ['I', 'O']
+        },
+        {
+            title: "關卡 3: L 的挑戰",
+            mission: "請用兩個方塊，拼出一個 **面積 (Area)** 為 **8** 的圖形。",
+            goal: { type: 'area', value: 8 },
+            blocks: ['L', 'L']
+        },
+        {
+            title: "關卡 4: 完美周長",
+            mission: "請拼出一個 **周長 (Perimeter)** 為 **12** 的圖形。",
+            goal: { type: 'perimeter', value: 12 },
+            blocks: ['T', 'S', 'O']
+        }
+    ];
+
+    // --- 遊戲狀態 ---
+    let currentLevel = 0;
+    let grid = []; // 代表遊戲板的 2D 陣列
+    let placedBlocks = []; // 儲存已放置方塊的資訊
+    let dragger = {
+        element: null,
+        ghost: null,
+        blockId: null,
+        offsetX: 0,
+        offsetY: 0,
+        isDragging: false
+    };
+
+    // --- 函式 ---
+
+    function init() {
+        loadLevel(currentLevel);
+        
+        // 事件監聽器
+        document.addEventListener('pointermove', onDrag);
+        document.addEventListener('pointerup', onDrop);
+        checkBtn.addEventListener('click', checkAnswer);
+        resetBtn.addEventListener('click', () => loadLevel(currentLevel));
+        nextLevelBtn.addEventListener('click', () => {
+            currentLevel = (currentLevel + 1) % LEVELS.length; // 循環關卡
+            loadLevel(currentLevel);
+        });
+        window.addEventListener('resize', handleResize);
+    }
+    
+    function handleResize() {
+        BOARD_COLS = Math.floor(gameBoard.clientWidth / CELL_SIZE);
+        BOARD_ROWS = Math.floor(gameBoard.clientHeight / CELL_SIZE);
+        loadLevel(currentLevel); // 重設關卡以適應新尺寸
+    }
+
+    function createGrid() {
+        grid = Array(BOARD_ROWS).fill(null).map(() => Array(BOARD_COLS).fill(0));
+        gameBoard.innerHTML = ''; // 清空視覺上的遊戲板
+        placedBlocks = [];
+        updateMetrics();
+    }
+
+    function loadLevel(levelIndex) {
+        const level = LEVELS[levelIndex];
+        
+        levelTitle.textContent = level.title;
+        missionText.innerHTML = level.mission;
+        
+        // 重置按鈕和回饋訊息
+        nextLevelBtn.classList.add('hidden');
+        checkBtn.classList.remove('hidden');
+        resetBtn.disabled = false;
+        checkBtn.disabled = false;
+        feedbackContainer.innerHTML = '';
+        
+        // 建立網格
+        createGrid();
+        
+        // 填滿方塊池
+        blockPool.innerHTML = '';
+        level.blocks.forEach((blockKey, index) => {
+            const blockData = BLOCKS[blockKey];
+            const blockId = `${blockKey}_${index}`;
+            const blockElement = createBlockElement(blockId, blockData);
+            blockPool.appendChild(blockElement);
+        });
+    }
+
+    function createBlockElement(id, blockData, isGhost = false) {
+        const blockDiv = document.createElement('div');
+        blockDiv.id = id;
+        blockDiv.className = isGhost ? 'ghost block' : 'block';
+        if (!isGhost) {
+            blockDiv.addEventListener('pointerdown', onDragStart);
+        }
+
+        const shape = blockData.shape;
+        const maxX = Math.max(...shape.map(p => p[1])) + 1;
+        const maxY = Math.max(...shape.map(p => p[0])) + 1;
+
+        blockDiv.style.display = 'grid';
+        blockDiv.style.gridTemplateColumns = `repeat(${maxX}, 1fr)`;
+        blockDiv.style.gridTemplateRows = `repeat(${maxY}, 1fr)`;
+        
+        const cells = Array(maxY).fill(null).map(() => Array(maxX).fill(null));
+        shape.forEach(([r, c]) => {
+            const cell = document.createElement('div');
+            cell.className = `block-cell ${blockData.color}`;
+            cells[r][c] = cell;
+        });
+        
+        cells.flat().forEach(cell => {
+            blockDiv.appendChild(cell || document.createElement('div'));
+        });
+        return blockDiv;
+    }
+
+    function onDragStart(e) {
+        if (!e.target.closest('.block')) return;
+
+        const element = e.target.closest('.block');
+        if (element.parentElement !== blockPool) return;
+
+        e.preventDefault();
+        
+        dragger.isDragging = true;
+        dragger.element = element;
+        dragger.blockId = element.id.split('_')[0];
+        
+        const rect = element.getBoundingClientRect();
+        dragger.offsetX = e.clientX - rect.left;
+        dragger.offsetY = e.clientY - rect.top;
+
+        dragger.ghost = createBlockElement(element.id, BLOCKS[dragger.blockId], true);
+        dragger.ghost.style.left = `${e.clientX - dragger.offsetX}px`;
+        dragger.ghost.style.top = `${e.clientY - dragger.offsetY}px`;
+        document.body.appendChild(dragger.ghost);
+        
+        element.style.opacity = '0.5';
+    }
+
+    function onDrag(e) {
+        if (!dragger.isDragging) return;
+        dragger.ghost.style.left = `${e.clientX - dragger.offsetX}px`;
+        dragger.ghost.style.top = `${e.clientY - dragger.offsetY}px`;
+    }
+
+    function onDrop(e) {
+        if (!dragger.isDragging) return;
+        dragger.isDragging = false;
+
+        const boardRect = gameBoard.getBoundingClientRect();
+        const droppedInside = e.clientX >= boardRect.left && e.clientX <= boardRect.right &&
+                              e.clientY >= boardRect.top && e.clientY <= boardRect.bottom;
+
+        if (droppedInside) {
+            const x = e.clientX - boardRect.left;
+            const y = e.clientY - boardRect.top;
+            const col = Math.floor(x / CELL_SIZE);
+            const row = Math.floor(y / CELL_SIZE);
+            placeBlockOnBoard(row, col);
+        } else {
+             dragger.element.style.opacity = '1';
+        }
+
+        // 清理
+        if(dragger.ghost) document.body.removeChild(dragger.ghost);
+        dragger.element = null;
+        dragger.ghost = null;
+    }
+
+    function placeBlockOnBoard(row, col) {
+        const blockData = BLOCKS[dragger.blockId];
+        const shape = blockData.shape;
+
+        // 碰撞偵測
+        for (const [r, c] of shape) {
+            const targetRow = row + r;
+            const targetCol = col + c;
+            if (targetRow >= BOARD_ROWS || targetCol < 0 || targetCol >= BOARD_COLS || grid[targetRow][targetCol]) {
+                dragger.element.style.opacity = '1'; // 中止放置
+                return;
+            }
+        }
+        
+        // 放置方塊
+        dragger.element.remove(); // 從方塊池 DOM 中移除
+
+        const placedCells = [];
+        shape.forEach(([r, c]) => {
+            const targetRow = row + r;
+            const targetCol = col + c;
+            grid[targetRow][targetCol] = 1;
+            
+            const cellDiv = document.createElement('div');
+            cellDiv.className = `placed-block-cell ${blockData.color}`;
+            cellDiv.style.top = `${targetRow * CELL_SIZE}px`;
+            cellDiv.style.left = `${targetCol * CELL_SIZE}px`;
+            gameBoard.appendChild(cellDiv);
+            placedCells.push(cellDiv);
+        });
+
+        placedBlocks.push({ id: dragger.element.id, cells: placedCells });
+        updateMetrics();
+    }
+    
+    function updateMetrics() {
+        let area = 0;
+        let perimeter = 0;
+        for (let r = 0; r < BOARD_ROWS; r++) {
+            for (let c = 0; c < BOARD_COLS; c++) {
+                if (grid[r][c] === 1) {
+                    area++;
+                    if (r === 0 || grid[r - 1][c] === 0) perimeter++; // 上方
+                    if (r === BOARD_ROWS - 1 || grid[r + 1][c] === 0) perimeter++; // 下方
+                    if (c === 0 || grid[r][c - 1] === 0) perimeter++; // 左方
+                    if (c === BOARD_COLS - 1 || grid[r][c + 1] === 0) perimeter++; // 右方
+                }
+            }
+        }
+        currentAreaText.textContent = area;
+        currentPerimeterText.textContent = perimeter;
+    }
+    
+    function checkAnswer() {
+        const level = LEVELS[currentLevel];
+        const goal = level.goal;
+        const currentArea = parseInt(currentAreaText.textContent);
+        const currentPerimeter = parseInt(currentPerimeterText.textContent);
+
+        let isCorrect = (goal.type === 'area' && goal.value === currentArea) ||
+                        (goal.type === 'perimeter' && goal.value === currentPerimeter);
+        
+        feedbackContainer.className = 'h-8 text-center text-xl font-bold'; // 重置 class
+        void feedbackContainer.offsetWidth; // 觸發重排
+
+        if (isCorrect) {
+            feedbackContainer.textContent = '太棒了，正確！';
+            feedbackContainer.classList.add('feedback-correct');
+            nextLevelBtn.classList.remove('hidden');
+            checkBtn.classList.add('hidden');
+            resetBtn.disabled = true;
+            checkBtn.disabled = true;
+        } else {
+            feedbackContainer.textContent = '喔喔，再試一次！';
+            feedbackContainer.classList.add('feedback-wrong');
+        }
+    }
+
+    // --- 初始載入 ---
+    init();
+
+    </script>
+</body>
+</html>
